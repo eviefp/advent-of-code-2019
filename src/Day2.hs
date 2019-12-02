@@ -45,7 +45,7 @@ parseItem :: Parser Int
 parseItem = decimal <* (char ',' <|> newline)
 
 solve1 :: String -> Maybe Int
-solve1 input = parseMaybe (many parseItem) input >>= go 12 2
+solve1 input = parseMaybe (many parseItem) input >>= evaluateProgram 12 2
 
 solve2 :: String -> Maybe (Int, Int)
 solve2 input =
@@ -58,22 +58,22 @@ recurse program = rec' ^? _head
     rec' = do
         noun <- [0 .. 99]
         verb <- [0 .. 99]
-        result <- maybe [] pure $ go noun verb program
+        result <- maybe [] pure $ evaluateProgram noun verb program
         guard $ result == 19690720
         pure (noun, verb)
 
-go :: Int -> Int -> [Int] -> Maybe Int
-go noun verb v =
+evaluateProgram :: Int -> Int -> [Int] -> Maybe Int
+evaluateProgram noun verb v =
     execState
-        (go' noun verb)
+        go'
         (IntMachine v 0)
         ^? field @"values" . _head
-
-go' :: MonadState IntMachine m => Int -> Int -> m ()
-go' noun verb = do
-    field @"values" . ix 1 .= noun
-    field @"values" . ix 2 .= verb
-    () <$ iterateWhile isNotHalt evaluateStep
+  where
+    go' :: MonadState IntMachine m => m ()
+    go' = do
+        field @"values" . ix 1 .= noun
+        field @"values" . ix 2 .= verb
+        () <$ iterateWhile isNotHalt evaluateStep
 
 isNotHalt :: Operation -> Bool
 isNotHalt =
