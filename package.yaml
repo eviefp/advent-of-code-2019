@@ -21,6 +21,12 @@ description:         Please see the README on GitHub at <https://github.com/vlad
 
 dependencies:
 - base >= 4.7 && < 5
+- generic-lens
+- lens
+- megaparsec
+- monad-loops
+- mtl
+- recursion-schemes
 
 default-extensions:
   - BangPatterns
@@ -28,13 +34,16 @@ default-extensions:
   - DataKinds
   - DeriveDataTypeable
   - DeriveGeneric
+  - DeriveTraversable
   - EmptyDataDecls
   - FlexibleContexts
   - FlexibleInstances
   - GADTs
   - GeneralizedNewtypeDeriving
   - InstanceSigs
+  - LambdaCase
   - MultiParamTypeClasses
+  - NamedFieldPuns
   - NoImplicitPrelude
   - NoMonomorphismRestriction
   - OverloadedStrings

@@ -245,7 +245,9 @@ language_extensions:
   - GADTs
   - GeneralizedNewtypeDeriving
   - InstanceSigs
+  - LambdaCase
   - MultiParamTypeClasses
+  - NamedFieldPuns
   - NoImplicitPrelude
   - NoMonomorphismRestriction
   - OverloadedStrings
