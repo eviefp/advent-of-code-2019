@@ -1,15 +1,11 @@
 module Day3 where
 
-import           Control.Lens               ((&), (+~), (-~), (^.))
+import           Control.Lens               (sumOf, to, (&), (+~), (-~))
 import           Control.Monad              (join)
 import           Control.Monad.State.Strict (State, evalState, get, put)
-import           Data.Bifunctor             (bimap)
-import           Data.Function              (on)
-import           Data.Functor.Foldable      (ListF (..), cataA)
-import           Data.Generics.Product      (field)
-import           Data.Map                   (Map)
+import           Data.Bifunctor             (Bifunctor, bimap)
+import           Data.Generics.Product      (field, types)
 import qualified Data.Map                   as Map
-import           Data.Set                   (Set)
 import qualified Data.Set                   as Set
 import           Data.Void                  (Void)
 import           GHC.Generics               (Generic)
@@ -53,85 +49,54 @@ origin = Point 0 0
 
 solve1 :: String -> Maybe Int
 solve1 input =
-    mDistance
-        . Set.foldr findMin (Point 999999 999999)
-        . uncurry Set.intersection
-        . bimap toPoints toPoints
+    uncurry Set.intersection
+        . bimapBoth (Set.fromList . toResult move origin)
         <$> parseMaybe parseFile input
+            >>= fmap manhattanDistance . Set.foldr findMin Nothing
   where
-    findMin :: Point -> Point -> Point
-    findMin p1 p2
-      | mDistance p1 < mDistance p2 = p1
-      | otherwise = p2
+    findMin :: Point -> Maybe Point -> Maybe Point
+    findMin p1 (Just p2)
+      | manhattanDistance p1 < manhattanDistance p2 = Just p1
+      | otherwise = Just p2
+    findMin p1 Nothing = Just p1
+
+    manhattanDistance :: Point -> Int
+    manhattanDistance = sumOf (types @Int . to abs)
 
 solve2 :: String -> Maybe Int
 solve2 input =
-    snd
-        . Map.foldrWithKey findMin (origin, 9999999)
-        . uncurry (Map.intersectionWith (+))
-        . bimap toDistancePoints toDistancePoints
+    uncurry (Map.intersectionWith (+))
+        . bimapBoth (Map.fromList . toResult step initialState)
         <$> parseMaybe parseFile input
+            >>= fmap snd . Map.foldrWithKey findMin Nothing
   where
-    findMin :: Point -> Int -> (Point, Int) -> (Point, Int)
-    findMin currentPoint currentCost (minPoint, minCost)
-      | currentCost < minCost = (currentPoint, currentCost)
-      | otherwise = (minPoint, minCost)
+    findMin :: Point -> Int -> Maybe (Point, Int) -> Maybe (Point, Int)
+    findMin currentPoint currentCost (Just (minPoint, minCost))
+      | currentCost < minCost = Just (currentPoint, currentCost)
+      | otherwise = Just (minPoint, minCost)
+    findMin currentPoint currentCost Nothing = Just (currentPoint, currentCost)
 
+    step :: Direction -> (Point, Int) -> (Point, Int)
+    step d = bimap (move d) (+1)
 
-toDistancePoints :: [Direction] -> Map Point Int
-toDistancePoints dir = evalState go (origin, 0)
+    initialState = (origin, 0)
+
+bimapBoth :: Bifunctor f => (a -> b) -> f a a -> f b b
+bimapBoth f = bimap f f
+
+toResult :: forall a. (Direction -> a -> a) -> a -> [Direction] -> [a]
+toResult step initialState = (`evalState` initialState) . traverse go
   where
-    go :: State (Point, Int) (Map Point Int)
-    go = cataA rec (reverse dir)
+    go :: Direction -> State a a
+    go d =
+        step d <$> get
+            >>= \x -> x <$ put x
 
-    rec =
-        \case
-            Cons a mas ->
-                mas >>=
-                    \as ->
-                        (\(k,v) -> Map.insertWith min k v as)
-                            <$> moveDirection a
-            Nil       -> pure mempty
-
-    moveDirection :: Direction -> State (Point, Int) (Point, Int)
-    moveDirection d = do
-        (point, value) <- get
-        let
-            result = (move point d, value + 1)
-        put result
-        pure result
-
-toPoints :: [Direction] -> Set Point
-toPoints dir = evalState go origin
-  where
-    go :: State Point (Set Point)
-    go = cataA rec (reverse dir)
-
-    rec =
-        \case
-            Cons a mas ->
-                mas >>=
-                    \as -> (`Set.insert` as) <$> moveDirection a
-            Nil       -> pure mempty
-
-    moveDirection :: Direction -> State Point Point
-    moveDirection d = do
-        point <- get
-        let result = move point d
-        put result
-        pure result
-
-move :: Point -> Direction -> Point
-move p d =
+move :: Direction -> Point -> Point
+move d p =
     p & case d of
         DUp    -> field @"getY" +~ 1
         DRight -> field @"getX" +~ 1
         DDown  -> field @"getY" -~ 1
         DLeft  -> field @"getX" -~ 1
 
-mDistance :: Point -> Int
-mDistance p = p ^. field @"getX" <+> p ^. field @"getY"
-
-(<+>) :: Int -> Int -> Int
-(<+>) = (+) `on` abs
-infixl 6 <+>
