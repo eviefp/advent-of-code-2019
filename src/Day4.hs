@@ -1,4 +1,7 @@
-module Day4 where
+module Day4
+    ( solve1
+    , solve2
+    ) where
 
 import Data.List (group)
 import Prelude
@@ -15,14 +18,14 @@ increasing = all (uncurry (<=)) . consecutives
 duplicate :: Eq a => [a] -> Bool
 duplicate = any (uncurry (==)) . consecutives
 
-solve1' :: [Int]
-solve1' = fmap read . filter (increasing &&& duplicate) . fmap show $ range
+solve1 :: Int
+solve1 = length . filter (increasing &&& duplicate) . fmap show $ range
 
 singleDuplicate :: Eq a => [a] -> Bool
 singleDuplicate = any ((== 2) . length) . group
 
-solve2' :: [Int]
-solve2' = fmap read . filter (increasing &&& singleDuplicate) . fmap show $ range
+solve2 :: Int
+solve2 = length . filter (increasing &&& singleDuplicate) . fmap show $ range
 
 (&&&) :: (a -> Bool) -> (a -> Bool) -> a -> Bool
 (&&&) f g a = f a && g a
