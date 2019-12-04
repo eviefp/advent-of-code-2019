@@ -1,10 +1,12 @@
 module Day3 where
 
-import           Control.Lens               (sumOf, to, (&), (+~), (-~))
+import           Control.Lens               (both, sumOf, view, (%~), (&), (+~),
+                                             (-~))
+import           Control.Lens.Unsound       (lensProduct)
 import           Control.Monad              (join)
 import           Control.Monad.State.Strict (State, evalState, get, put)
 import           Data.Bifunctor             (Bifunctor, bimap)
-import           Data.Generics.Product      (field, types)
+import           Data.Generics.Product      (field)
 import qualified Data.Map                   as Map
 import qualified Data.Set                   as Set
 import           Data.Void                  (Void)
@@ -61,7 +63,13 @@ solve1 input =
     findMin p1 Nothing = Just p1
 
     manhattanDistance :: Point -> Int
-    manhattanDistance = sumOf (types @Int . to abs)
+    manhattanDistance p =
+        p
+            & view (lensProduct (field @"getX") (field @"getY"))
+            & both %~ abs
+            & sumOf both
+    -- but also this works all the same:
+    -- sumOf (types @Int . to abs)
 
 solve2 :: String -> Maybe Int
 solve2 input =

@@ -27,6 +27,7 @@ dependencies:
 - megaparsec
 - monad-loops
 - mtl
+- profunctors
 - recursion-schemes
 
 default-extensions:
