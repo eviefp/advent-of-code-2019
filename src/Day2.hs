@@ -1,6 +1,8 @@
 module Day2
     ( solve1
     , solve2
+    , parseItem
+    , IntMachine (..)
     ) where
 
 import Control.Lens               (ix, use, (%=), (+=), (.=), (^.), (^?), _head)
@@ -14,7 +16,7 @@ import GHC.Generics               (Generic)
 import Prelude
 import Text.Megaparsec            (Parsec, many, parseMaybe, (<|>))
 import Text.Megaparsec.Char       (char, newline)
-import Text.Megaparsec.Char.Lexer (decimal)
+import Text.Megaparsec.Char.Lexer (decimal, signed)
 
 type Parser = Parsec Void String
 
@@ -42,7 +44,7 @@ data IntMachine = IntMachine
 
 
 parseItem :: Parser Int
-parseItem = decimal <* (char ',' <|> newline)
+parseItem = signed mempty decimal <* (char ',' <|> newline)
 
 solve1 :: String -> Maybe Int
 solve1 input = parseMaybe (many parseItem) input >>= evaluateProgram 12 2
