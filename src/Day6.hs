@@ -1,4 +1,7 @@
-module Day6 where
+module Day6
+    ( solve1
+    , solve2
+    ) where
 
 import           Control.Lens                      (traversed, (^..))
 import           Control.Monad                     (join)
@@ -80,14 +83,17 @@ makeOrbitalGraph orbits =
             <*> Map.lookup to uniqueBodies
             <*> pure orbit
 
+-- 1 for YOU, 1 for SAN, and 1 for object SAN is orbiting = 3 :(
 solve2 :: String -> Maybe Int
 solve2 input =
-    subtract 2
-            . length
-            . findPath (Body "YOU") (Body "SAN")
+    parseMaybe inputParser input
+        >>= fmap (subtract 3 . length) . go
+  where
+    go :: [Orbit] -> Maybe Graph.Path
+    go =
+        findPath (Body "YOU") (Body "SAN")
             . makeBiDirectional
             . makeOrbitalGraph
-        <$> parseMaybe inputParser input
 
 makeBiDirectional :: Graph.Gr Body Orbit -> Graph.Gr Body Orbit
 makeBiDirectional gr =
