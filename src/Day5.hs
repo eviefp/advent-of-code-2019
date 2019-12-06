@@ -1,20 +1,11 @@
 module Day5 where
 
-import Control.Lens               (ix, use, (%=), (&), (+=), (.=), (.~), (^.),
-                                   (^?), _head)
-import Control.Monad              (guard)
-import Control.Monad.Loops        (iterateWhile)
-import Control.Monad.State.Strict (MonadState (..), execState, gets)
-import Data.Bool                  (bool)
-import Data.Generics.Product      (field)
-import Data.List                  (unfoldr)
-import Data.Maybe                 (fromMaybe)
-import Data.Void                  (Void)
-import GHC.Generics               (Generic)
+import Control.Lens    (ix, (&), (.~), (^?))
+import Data.Bool       (bool)
+import Data.List       (unfoldr)
+import GHC.Generics    (Generic)
 import Prelude
-import Text.Megaparsec            (Parsec, many, parseMaybe, (<|>))
-import Text.Megaparsec.Char       (char, newline)
-import Text.Megaparsec.Char.Lexer (decimal)
+import Text.Megaparsec (many, parseMaybe)
 
 import Day2 (IntMachine (..), parseItem)
 
@@ -46,10 +37,10 @@ data BinOp = BinOp
     deriving (Generic, Show)
 
 solve1 :: String -> Maybe [Output]
-solve1 input = parseMaybe (many parseItem) input >>= evaluateProgram 1
+solve1 input = parseMaybe (many parseItem) input >>= evaluateProgram
 
-evaluateProgram :: Int -> [Int] -> Maybe [Output]
-evaluateProgram input raw = check $ unfoldr go (IntMachine raw 0)
+evaluateProgram :: [Int] -> Maybe [Output]
+evaluateProgram raw = check $ unfoldr go (IntMachine raw 0)
   where
     check = Just
     -- check :: [Output] -> Maybe Int
@@ -105,7 +96,7 @@ getNextInstruction instructionPointer values =
             1008  -> Just $ Equals $ BinOp Index Value
             1108  -> Just $ Equals $ BinOp Value Value
 
-            x     -> Nothing
+            _     -> Nothing
 
 evaluateInstruction  :: Int -> [Int] -> Instruction -> Maybe (Output, IntMachine)
 evaluateInstruction instructionPointer values instr = do
@@ -151,8 +142,8 @@ evaluateInstruction instructionPointer values instr = do
                 (instructionPointer + 2)
             )
     runJump :: (Int -> Bool) -> Target -> Target -> Maybe (Output, IntMachine)
-    runJump f cond target = do
-        cond <- getTarget cond (instructionPointer + 1)
+    runJump f condT target = do
+        cond <- getTarget condT (instructionPointer + 1)
         out <- getTarget target (instructionPointer + 2)
         pure
             ( NoOutput
