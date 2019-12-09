@@ -7,7 +7,14 @@ import GHC.Generics    (Generic)
 import Prelude
 import Text.Megaparsec (many, parseMaybe)
 
-import Day2 (IntMachine (..), parseItem)
+import Day2 (parseItem)
+
+
+data IntMachine = IntMachine
+    { values             :: [Int]
+    , instructionPointer :: Int
+    , inputs             :: [Int]
+    } deriving (Generic, Show)
 
 data Output
     = Result Int
@@ -36,22 +43,26 @@ data BinOp = BinOp
     }
     deriving (Generic, Show)
 
-solve1 :: String -> Maybe [Output]
-solve1 input = parseMaybe (many parseItem) input >>= evaluateProgram
+solve1 :: String -> Maybe Int
+solve1 input = parseMaybe (many parseItem) input >>= evaluateProgram 5 0
 
-evaluateProgram :: [Int] -> Maybe [Output]
-evaluateProgram raw = check $ unfoldr go (IntMachine raw 0)
+evaluateProgram :: Int -> Int -> [Int] -> Maybe Int
+evaluateProgram input1 input2 raw =
+    check
+        . unfoldr go
+        . IntMachine raw 0
+        $ [input1, input2]
   where
-    check = Just
-    -- check :: [Output] -> Maybe Int
-    -- check (Result 0 : xs) = check xs
-    -- check (Result x : []) = Just x
-    -- check (NoOutput : xs) = check xs
-    -- check _               = Nothing
+    check :: [Output] -> Maybe Int
+    check (Result 0 : xs) = check xs
+    check (Result x : _)  = Just x
+    check (NoOutput : xs) = check xs
+    check _               = Nothing
+
     go :: IntMachine -> Maybe (Output, IntMachine)
-    go IntMachine { values, instructionPointer } =
+    go IntMachine { values, instructionPointer, inputs } =
         getNextInstruction instructionPointer values
-            >>= evaluateInstruction instructionPointer values
+            >>= evaluateInstruction inputs instructionPointer values
 
 getNextInstruction :: Int -> [Int] -> Maybe Instruction
 getNextInstruction instructionPointer values =
@@ -98,8 +109,13 @@ getNextInstruction instructionPointer values =
 
             _     -> Nothing
 
-evaluateInstruction  :: Int -> [Int] -> Instruction -> Maybe (Output, IntMachine)
-evaluateInstruction instructionPointer values instr = do
+evaluateInstruction
+    :: [Int]
+    -> Int
+    -> [Int]
+    -> Instruction
+    -> Maybe (Output, IntMachine)
+evaluateInstruction inputs instructionPointer values instr = do
     case instr of
         Add binOp                 -> runBinOp (+) binOp
         Mul binOp                 -> runBinOp (*) binOp
@@ -122,6 +138,7 @@ evaluateInstruction instructionPointer values instr = do
             , IntMachine
                 ( values & ix output .~ result )
                 ( instructionPointer + 4 )
+                inputs
             )
     runOutput :: Target -> Maybe (Output, IntMachine)
     runOutput t = do
@@ -131,6 +148,7 @@ evaluateInstruction instructionPointer values instr = do
             , IntMachine
                 values
                 (instructionPointer + 2)
+                inputs
             )
     runInput :: Maybe (Output, IntMachine)
     runInput = do
@@ -138,8 +156,9 @@ evaluateInstruction instructionPointer values instr = do
         pure
             ( NoOutput
             , IntMachine
-                (values & ix output .~ 5)
+                (values & ix output .~ head inputs)
                 (instructionPointer + 2)
+                (tail inputs)
             )
     runJump :: (Int -> Bool) -> Target -> Target -> Maybe (Output, IntMachine)
     runJump f condT target = do
@@ -153,6 +172,7 @@ evaluateInstruction instructionPointer values instr = do
                     then out
                     else instructionPointer + 3
                 )
+                inputs
             )
     getTarget :: Target -> Int -> Maybe Int
     getTarget Value i = values ^? ix i

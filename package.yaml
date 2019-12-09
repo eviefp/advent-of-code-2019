@@ -22,9 +22,11 @@ description:         Please see the README on GitHub at <https://github.com/vlad
 dependencies:
 - base >= 4.7 && < 5
 - containers
+- extra
 - fgl
 - generic-lens
 - lens
+- machines
 - megaparsec
 - monad-loops
 - mtl
