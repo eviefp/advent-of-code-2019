@@ -30,7 +30,7 @@ raw = do
     pure $ case res of Just x -> x
 
 m' = construct intMachine
-m = repeated (Value 1) ~> m'
+m = repeated (Value 5) ~> m'
 
 runMachine inputs =
     runT m `runState` State (Value <$> inputs) (Index 0)

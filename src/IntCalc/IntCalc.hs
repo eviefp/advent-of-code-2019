@@ -8,7 +8,7 @@ import Data.Generics.Product     (field)
 import Data.Machine.Is           (Is)
 import Data.Machine.Plan         (PlanT, await, stop, yield)
 import GHC.Generics              (Generic)
-import Prelude
+import Prelude                   hiding (pred)
 
 data State = State
     { memory             :: ![Value]
@@ -17,7 +17,7 @@ data State = State
 
 newtype Value = Value
     { getValue :: Int
-    } deriving (Generic, Show, Num)
+    } deriving (Generic, Show, Eq, Num, Ord)
 newtype Index = Index
     { getIndex :: Int
     } deriving (Generic, Show)
@@ -31,6 +31,10 @@ data Instruction
     | Multiply ParameterMode ParameterMode
     | Input
     | Output ParameterMode
+    | JumpIfNonZero ParameterMode ParameterMode
+    | JumpIfZero ParameterMode ParameterMode
+    | LessThan ParameterMode ParameterMode
+    | Equals ParameterMode ParameterMode
     deriving (Generic, Show)
 
 type Plan m a = MonadState State m => PlanT (Is Value) Value m a
@@ -53,7 +57,7 @@ getNextInstruction =
     readAtInstructionPointer
         >>= \instr ->
             advanceInstructionPointer
-                >> toInstructionDay5 instr
+                >> (toInstructionDay5 instr <|> pure Halt)
 
 readAt :: Index -> Plan m Value
 readAt (Index index) =
@@ -81,15 +85,23 @@ advanceInstructionPointer =
 
 toInstructionDay5 :: forall m. Monad m => Alternative m => Value -> m Instruction
 toInstructionDay5 v =
-    liftMaybe (getNthDigit (-1) v)
+    liftMaybe (getNthDigit 0 v)
         >>= \case
-            0 -> pure Halt
-            1 -> Add <$> parseMode 1 v <*> parseMode 2 v
-            2 -> Multiply <$> parseMode 1 v <*> parseMode 2 v
+            1 -> parseBinaryOp Add
+            2 -> parseBinaryOp Multiply
             3 -> pure Input
-            4 -> Output <$> parseMode 1 v
+            4 -> Output <$> parseMode 2 v
+            5 -> parseBinaryOp JumpIfNonZero
+            6 -> parseBinaryOp JumpIfZero
+            7 -> parseBinaryOp LessThan
+            8 -> parseBinaryOp Equals
             _ -> empty
   where
+    parseBinaryOp
+        :: (ParameterMode -> ParameterMode -> Instruction)
+        -> m Instruction
+    parseBinaryOp ctor = ctor <$> parseMode 2 v <*> parseMode 3 v
+
     parseMode :: Int -> Value -> m ParameterMode
     parseMode index value =
         case getNthDigit index value of
@@ -102,7 +114,7 @@ toInstructionDay5 v =
             field @"getValue"
             . to show
             . reversed
-            . ix (n + 1)
+            . ix n
             . to pure
             . _Show @Int
 
@@ -112,17 +124,50 @@ evaluateInstruction =
         Halt ->
             stop
         Add mode1 mode2 ->
-            (+) <$> readParam mode1 <*> readParam mode2
-                >>= storeResult
-                >> intMachine
+            binOp (+) mode1 mode2
         Multiply mode1 mode2 ->
-            (*) <$> readParam mode1 <*> readParam mode2
-                >>= storeResult
-                >> intMachine
+            binOp (*) mode1 mode2
         Input ->
             await >>= storeResult >> intMachine
         Output mode ->
             readParam mode >>= yield >> intMachine
+        JumpIfNonZero mode1 mode2 ->
+            jumpIf (/= 0) mode1 mode2
+        JumpIfZero mode1 mode2 ->
+            jumpIf (== 0) mode1 mode2
+        LessThan mode1 mode2 ->
+            binOp lt mode1 mode2
+        Equals mode1 mode2 ->
+            binOp eq mode1 mode2
+  where
+    lt :: Value -> Value -> Value
+    lt lhs rhs
+      | lhs < rhs = 1
+      | otherwise = 0
+    eq :: Value -> Value -> Value
+    eq lhs rhs
+      | lhs == rhs = 1
+      | otherwise = 0
+    binOp
+        :: (Value -> Value -> Value)
+        -> ParameterMode
+        -> ParameterMode
+        -> Plan m Value
+    binOp op mode1 mode2 =
+        op <$> readParam mode1 <*> readParam mode2
+            >>= storeResult
+            >> intMachine
+
+    jumpIf :: (Value -> Bool) -> ParameterMode -> ParameterMode -> Plan m Value
+    jumpIf pred mode1 mode2 = do
+        cond <- pred <$> readParam mode1
+        out <- readParam mode2
+        if cond
+            then setInstructionPointer (asIndex out) >> intMachine
+            else intMachine
+
+    setInstructionPointer :: Index -> Plan m ()
+    setInstructionPointer idx = field @"instructionPointer" .= idx
 
 readParam :: ParameterMode -> Plan m Value
 readParam mode =
