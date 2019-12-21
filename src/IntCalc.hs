@@ -1,4 +1,4 @@
-module IntCalc.IntCalc where
+module IntCalc where
 
 import Control.Applicative       (Alternative, empty, (<|>))
 import Control.Lens              (ix, preuse, to, use, (+=), (.=), (^?))

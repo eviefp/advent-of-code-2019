@@ -12,7 +12,7 @@ import Control.Monad.State.Strict (runState)
 import Data.Machine.Process
 import Data.Machine.Source
 import Data.Machine.Type
-import IntCalc.IntCalc
+import IntCalc
 import Text.Megaparsec            (many, parseMaybe)
 
 import Prelude
@@ -24,13 +24,16 @@ main = pure ()
 input5 :: IO String
 input5 = readFile "day-05-input-1"
 
-raw :: IO [Int]
-raw = do
-    res <- parseMaybe (many parseItem) <$> input5
-    pure $ case res of Just x -> x
+input7 :: IO String
+input7 = readFile "day-07-input-1"
+
+raw :: String -> [Int]
+raw inp =
+    let res = parseMaybe (many parseItem) inp
+    in case res of Just x -> x
 
 m' = construct intMachine
 m = repeated (Value 5) ~> m'
 
-runMachine inputs =
-    runT m `runState` State (Value <$> inputs) (Index 0)
+runMachine machine inputs =
+    runT machine `runState` State (Value <$> inputs) (Index 0)
